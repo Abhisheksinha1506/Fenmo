@@ -181,10 +181,21 @@ export default function ExpenseForm({ onSubmit, isSubmitting, error }: ExpenseFo
                             }}
                             className={cn(
                                 "bg-muted/40 border-input focus:border-primary focus:ring-primary/30",
+                                "dark:[color-scheme:dark] cursor-text", // Fix for dark mode icon and cursor
                                 fieldErrors.date && "border-destructive focus:border-destructive focus:ring-destructive/30"
                             )}
                             disabled={isSubmitting}
                             required
+                            onClick={(e) => {
+                                // Show picker on click anywhere in the input
+                                try {
+                                    if ('showPicker' in HTMLInputElement.prototype) {
+                                        (e.target as HTMLInputElement).showPicker();
+                                    }
+                                } catch (error) {
+                                    // Ignore if already open or not supported
+                                }
+                            }}
                         />
                         {fieldErrors.date && (
                             <p className="text-sm text-destructive">{fieldErrors.date}</p>

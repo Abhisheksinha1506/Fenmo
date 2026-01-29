@@ -233,7 +233,7 @@ export default function Home() {
                     </div>
 
                     {/* Sidebar - Summary (Right Column) */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
                         <ExpenseSummary
                             total={total}
                             categoryTotals={categoryTotals}

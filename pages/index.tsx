@@ -15,7 +15,9 @@ import {
     IndianRupee,
     PieChart,
     Wallet,
-    PlusCircle
+    PlusCircle,
+    Calendar,
+    Clock
 } from 'lucide-react';
 import ExpenseForm from '@/components/ExpenseForm';
 import ExpensesTable from '@/components/ExpensesTable';
@@ -36,7 +38,8 @@ export default function Home() {
     // Filter/Sort State
     const [filterCategory, setFilterCategory] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
-    const [sortDesc, setSortDesc] = useState(true);
+    // sortMode: 'date' (Expense Date) | 'created' (Date Added/Newest First)
+    const [sortMode, setSortMode] = useState<'date' | 'created'>('date');
 
     // Derived State
     const [total, setTotal] = useState(0);
@@ -58,7 +61,7 @@ export default function Home() {
     // Fetch when filter (debounced) or sort changes
     useEffect(() => {
         fetchExpenses();
-    }, [filterCategory, sortDesc]);
+    }, [filterCategory, sortMode]);
 
     const fetchExpenses = async () => {
         setLoading(true);
@@ -66,7 +69,11 @@ export default function Home() {
             const params = new URLSearchParams();
             if (filterCategory) params.append('category', filterCategory);
             // ... rest of fetchExpenses
-            if (sortDesc) params.append('sort', 'date_desc');
+            if (sortMode === 'date') {
+                params.append('sort', 'date_desc');
+            } else {
+                params.append('sort', 'created_desc'); // API defaults to created_desc if no sort param or distinct param
+            }
 
             const res = await fetch(`/api/expenses?${params}`);
             if (!res.ok) throw new Error('Failed to fetch expenses');
@@ -110,9 +117,15 @@ export default function Home() {
 
             toast.success('Expense added successfully');
             await fetchExpenses();
+            await fetchExpenses();
         } catch (err: any) {
-            toast.error(err.message || 'Failed to save expense');
-            throw err; // Re-throw to let form handle error state if needed, though toast handles display
+            console.error('Add expense error:', err);
+            let msg = err.message || 'Failed to save expense';
+            if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+                msg = 'Network error. Please check your internet connection.';
+            }
+            toast.error(msg);
+            throw err; // Re-throw to let form handle error state if needed
         } finally {
             setSubmitting(false);
         }
@@ -175,16 +188,27 @@ export default function Home() {
                                             className="pl-9 bg-muted/40 border-input"
                                         />
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id="sort"
-                                            checked={sortDesc}
-                                            onCheckedChange={(checked) => setSortDesc(checked as boolean)}
-                                        />
-                                        <Label htmlFor="sort" className="cursor-pointer flex items-center gap-1.5">
-                                            <ArrowDownUp className="h-3.5 w-3.5" />
-                                            Newest first
-                                        </Label>
+                                    <div className="flex items-center space-x-4">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-muted-foreground font-medium flex items-center gap-1">
+                                                <ArrowDownUp className="h-3.5 w-3.5" />
+                                                Sort by:
+                                            </span>
+                                            <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg">
+                                                <button
+                                                    onClick={() => setSortMode('created')}
+                                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${sortMode === 'created' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                                >
+                                                    Date Added
+                                                </button>
+                                                <button
+                                                    onClick={() => setSortMode('date')}
+                                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${sortMode === 'date' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                                >
+                                                    Expense Date
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>
@@ -195,12 +219,15 @@ export default function Home() {
                             <CardHeader>
                                 <CardTitle>Recent Expenses</CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <ExpensesTable
-                                    expenses={expenses}
-                                    loading={loading}
-                                    onRetry={fetchExpenses}
-                                />
+                            <CardContent className="p-0">
+                                <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                                    <ExpensesTable
+                                        expenses={expenses}
+                                        loading={loading}
+                                        onRetry={fetchExpenses}
+                                        className="border-0"
+                                    />
+                                </div>
                             </CardContent>
                         </Card>
                         {/* Sidebar - Summary */}
@@ -213,6 +240,6 @@ export default function Home() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

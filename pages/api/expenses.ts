@@ -25,6 +25,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (isNaN(amountFloat) || amountFloat <= 0) {
       return res.status(400).json({ error: 'Amount must be a positive number' });
     }
+    if (amountFloat > 1000000000000) { // 1 Trillion limit
+      return res.status(400).json({ error: 'Amount too large (max 1 trillion)' });
+    }
     const amountPaise = Math.round(amountFloat * 100);
 
     if (!category || typeof category !== 'string' || !category.trim()) {

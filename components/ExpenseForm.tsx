@@ -30,6 +30,8 @@ export default function ExpenseForm({ onSubmit, isSubmitting, error }: ExpenseFo
 
         if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
             errors.amount = 'Amount must be a positive number';
+        } else if (parseFloat(amount) > 1000000000000) {
+            errors.amount = 'Amount cannot exceed 1 trillion';
         }
         if (!category.trim()) {
             errors.category = 'Category is required';
@@ -96,6 +98,13 @@ export default function ExpenseForm({ onSubmit, isSubmitting, error }: ExpenseFo
                             type="number"
                             step="0.01"
                             min="0.01"
+                            max="1000000000000" // 1 Trillion
+                            onKeyDown={(e) => {
+                                // Prevent scientific notation
+                                if (['e', 'E', '+', '-'].includes(e.key)) {
+                                    e.preventDefault();
+                                }
+                            }}
                             value={amount}
                             onChange={(e) => {
                                 setAmount(e.target.value);

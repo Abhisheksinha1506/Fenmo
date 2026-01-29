@@ -6,6 +6,7 @@ describe('/api/expenses', () => {
     const mockSelect = jest.fn();
     const mockInsert = jest.fn();
     const mockEq = jest.fn();
+    const mockIlike = jest.fn();
     const mockSingle = jest.fn();
     const mockOrder = jest.fn();
     const mockCreateClient = jest.fn();
@@ -31,11 +32,17 @@ describe('/api/expenses', () => {
 
         mockSelect.mockReturnValue({
             eq: mockEq,
+            ilike: mockIlike,
             order: mockOrder,
             single: mockSingle
         });
 
         mockEq.mockReturnValue({
+            single: mockSingle,
+            order: mockOrder
+        });
+
+        mockIlike.mockReturnValue({
             single: mockSingle,
             order: mockOrder
         });
@@ -160,6 +167,17 @@ describe('/api/expenses', () => {
             expect(res._getJSONData()[0].amount).toBe('10.00'); // Formatted back
         });
 
+        it('should filter by category using partial match', async () => {
+            const { req, res } = createMocks({
+                method: 'GET',
+                query: { category: 'foo' } // lowercase search
+            });
+
+            await handler(req, res);
+
+            expect(mockIlike).toHaveBeenCalledWith('category', '%foo%');
+        });
+
         it('should filter by category', async () => {
             const { req, res } = createMocks({
                 method: 'GET',
@@ -168,7 +186,7 @@ describe('/api/expenses', () => {
 
             await handler(req, res);
 
-            expect(mockEq).toHaveBeenCalledWith('category', 'Travel');
+            expect(mockIlike).toHaveBeenCalledWith('category', '%Travel%');
         });
 
         it('should sort by date_desc', async () => {

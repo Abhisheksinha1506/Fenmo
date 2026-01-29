@@ -107,7 +107,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let query = supabase.from('expenses').select('*');
 
     if (category && typeof category === 'string' && category.trim()) {
-      query = query.eq('category', category.trim());
+      // Use ilike for case-insensitive partial match
+      query = query.ilike('category', `%${category.trim()}%`);
     }
 
     if (sort === 'date_desc') {

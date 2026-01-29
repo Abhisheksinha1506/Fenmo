@@ -35,6 +35,7 @@ export default function Home() {
 
     // Filter/Sort State
     const [filterCategory, setFilterCategory] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
     const [sortDesc, setSortDesc] = useState(true);
 
     // Derived State
@@ -45,6 +46,16 @@ export default function Home() {
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
+    // Debounce filter
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setFilterCategory(searchTerm);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // Fetch when filter (debounced) or sort changes
     useEffect(() => {
         fetchExpenses();
     }, [filterCategory, sortDesc]);
@@ -54,6 +65,7 @@ export default function Home() {
         try {
             const params = new URLSearchParams();
             if (filterCategory) params.append('category', filterCategory);
+            // ... rest of fetchExpenses
             if (sortDesc) params.append('sort', 'date_desc');
 
             const res = await fetch(`/api/expenses?${params}`);
@@ -155,8 +167,11 @@ export default function Home() {
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             placeholder="Filter by category..."
-                                            value={filterCategory}
-                                            onChange={(e) => setFilterCategory(e.target.value)}
+                                            value={searchTerm}
+                                            onChange={(e) => {
+                                                setSearchTerm(e.target.value);
+                                                setLoading(true); // Show skeleton immediately while typing/debouncing
+                                            }}
                                             className="pl-9 bg-muted/40 border-input"
                                         />
                                     </div>

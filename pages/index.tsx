@@ -220,7 +220,7 @@ export default function Home() {
                                 <CardTitle>Recent Expenses</CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <div className="h-[600px] overflow-y-auto custom-scrollbar pr-2">
+                                <div className="h-[400px] overflow-y-auto custom-scrollbar pr-2">
                                     <ExpensesTable
                                         expenses={expenses}
                                         loading={loading}

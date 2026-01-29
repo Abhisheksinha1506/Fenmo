@@ -43,7 +43,7 @@ export default function ExpenseSummary({ total, categoryTotals, className }: Exp
                 </CardHeader>
                 <CardContent>
                     {Object.entries(categoryTotals).length > 0 ? (
-                        <div className="space-y-4">
+                        <div className="max-h-[300px] overflow-y-auto custom-scrollbar pr-2 space-y-4">
                             {Object.entries(categoryTotals)
                                 .sort(([, a], [, b]) => b - a)
                                 .map(([cat, sum], index) => {

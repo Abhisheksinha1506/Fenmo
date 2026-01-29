@@ -220,7 +220,7 @@ export default function Home() {
                                 <CardTitle>Recent Expenses</CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                                <div className="h-[600px] overflow-y-auto custom-scrollbar pr-2">
                                     <ExpensesTable
                                         expenses={expenses}
                                         loading={loading}
@@ -230,16 +230,18 @@ export default function Home() {
                                 </div>
                             </CardContent>
                         </Card>
-                        {/* Sidebar - Summary */}
-                        <div className="space-y-6">
-                            <ExpenseSummary
-                                total={total}
-                                categoryTotals={categoryTotals}
-                            />
-                        </div>
+                    </div>
+
+                    {/* Sidebar - Summary (Right Column) */}
+                    <div className="space-y-6">
+                        <ExpenseSummary
+                            total={total}
+                            categoryTotals={categoryTotals}
+                            className="grid-cols-1 md:grid-cols-1" // Force vertical stack in sidebar
+                        />
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     );
 }

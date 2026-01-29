@@ -158,15 +158,25 @@ export default function ExpenseForm({ onSubmit, isSubmitting, error }: ExpenseFo
 
                     {/* Description Field */}
                     <div className="space-y-2 lg:col-span-2">
-                        <Label htmlFor="description">Description (Optional)</Label>
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="description">Description (Optional)</Label>
+                            <span className="text-xs text-muted-foreground">
+                                {description.length}/500
+                            </span>
+                        </div>
                         <Input
                             id="description"
                             type="text"
                             value={description}
-                            onChange={(e) => setDescription(e.target.value)}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                // Truncate to 500 characters
+                                setDescription(value.slice(0, 500));
+                            }}
                             placeholder="Description (optional)"
                             className="bg-muted/40 border-input focus:border-primary focus:ring-primary/30"
                             disabled={isSubmitting}
+                            maxLength={500}
                         />
                     </div>
 

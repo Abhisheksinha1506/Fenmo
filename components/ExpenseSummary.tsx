@@ -47,7 +47,11 @@ export default function ExpenseSummary({ total, categoryTotals, className }: Exp
                             {Object.entries(categoryTotals)
                                 .sort(([, a], [, b]) => b - a)
                                 .map(([cat, sum], index) => {
-                                    const percentage = ((sum / total) * 100).toFixed(0);
+                                    const percentage = (sum / total) * 100;
+                                    // Show 1 decimal for small percentages, 0 decimals for large ones
+                                    const displayPercentage = percentage >= 1
+                                        ? percentage.toFixed(0)
+                                        : percentage.toFixed(1);
                                     // Dynamic simple color assignment based on index for variety
                                     // In a real app, use a proper palette or hash function
                                     const barColorClass = [
@@ -69,10 +73,10 @@ export default function ExpenseSummary({ total, categoryTotals, className }: Exp
                                                 <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                                                     <div
                                                         className={cn("h-full rounded-full transition-all duration-500 ease-out", barColorClass)}
-                                                        style={{ width: `${percentage}%` }}
+                                                        style={{ width: `${Math.max(percentage, 0.5)}%` }}
                                                     />
                                                 </div>
-                                                <span className="text-xs font-medium text-muted-foreground w-8 text-right">{percentage}%</span>
+                                                <span className="text-xs font-medium text-muted-foreground w-10 text-right">{displayPercentage}%</span>
                                             </div>
                                         </div>
                                     );

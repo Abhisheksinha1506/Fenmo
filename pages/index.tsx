@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Head from 'next/head';
 import { Button } from '@/components/ui/button';
@@ -41,9 +41,18 @@ export default function Home() {
     // sortMode: 'date' (Expense Date) | 'created' (Date Added/Newest First)
     const [sortMode, setSortMode] = useState<'date' | 'created'>('date');
 
-    // Derived State
-    const [total, setTotal] = useState(0);
-    const [categoryTotals, setCategoryTotals] = useState<Record<string, number>>({});
+    // Derived State - Optimized with useMemo
+    const total = useMemo(() => {
+        return expenses.reduce((acc, exp) => acc + parseFloat(exp.amount), 0);
+    }, [expenses]);
+
+    const categoryTotals = useMemo(() => {
+        return expenses.reduce((acc: Record<string, number>, exp) => {
+            const amt = parseFloat(exp.amount);
+            acc[exp.category] = (acc[exp.category] || 0) + amt;
+            return acc;
+        }, {});
+    }, [expenses]);
 
     // UI State
     const [loading, setLoading] = useState(false);
@@ -63,16 +72,15 @@ export default function Home() {
         fetchExpenses();
     }, [filterCategory, sortMode]);
 
-    const fetchExpenses = async () => {
+    const fetchExpenses = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
             if (filterCategory) params.append('category', filterCategory);
-            // ... rest of fetchExpenses
             if (sortMode === 'date') {
                 params.append('sort', 'date_desc');
             } else {
-                params.append('sort', 'created_desc'); // API defaults to created_desc if no sort param or distinct param
+                params.append('sort', 'created_desc');
             }
 
             const res = await fetch(`/api/expenses?${params}`);
@@ -80,22 +88,12 @@ export default function Home() {
 
             const data = await res.json();
             setExpenses(data);
-
-            const sum = data.reduce((acc: number, exp: any) => acc + parseFloat(exp.amount), 0);
-            setTotal(sum);
-
-            const catTotals = data.reduce((acc: Record<string, number>, exp: any) => {
-                const amt = parseFloat(exp.amount);
-                acc[exp.category] = (acc[exp.category] || 0) + amt;
-                return acc;
-            }, {});
-            setCategoryTotals(catTotals);
         } catch (err: any) {
             toast.error('Failed to load expenses');
         } finally {
             setLoading(false);
         }
-    };
+    }, [filterCategory, sortMode]);
 
     const handleAddExpense = async (data: { amount: string; category: string; description: string; date: string }) => {
         setSubmitting(true);
@@ -116,7 +114,6 @@ export default function Home() {
             }
 
             toast.success('Expense added successfully');
-            await fetchExpenses();
             await fetchExpenses();
         } catch (err: any) {
             console.error('Add expense error:', err);

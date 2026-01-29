@@ -23,6 +23,7 @@ describe('/api/expenses', () => {
             from: mockFrom
         });
 
+        // Default chain behavior
         mockFrom.mockReturnValue({
             select: mockSelect,
             insert: mockInsert
@@ -31,7 +32,7 @@ describe('/api/expenses', () => {
         mockSelect.mockReturnValue({
             eq: mockEq,
             order: mockOrder,
-            single: mockSingle // Direct select().single()
+            single: mockSingle
         });
 
         mockEq.mockReturnValue({
@@ -61,67 +62,124 @@ describe('/api/expenses', () => {
         delete process.env.SUPABASE_ANON_KEY;
     });
 
-    it('POST should reject missing idempotency key', async () => {
-        const { req, res } = createMocks({
-            method: 'POST',
-            body: {
-                amount: '100',
-                category: 'Food',
-                date: '2023-01-01',
-            },
+    describe('POST Validation', () => {
+        it('should reject missing idempotency key', async () => {
+            const { req, res } = createMocks({
+                method: 'POST',
+                body: { amount: '100', category: 'Food', date: '2023-01-01' },
+            });
+            await handler(req, res);
+            expect(res._getStatusCode()).toBe(400);
+            expect(res._getJSONData().error).toMatch(/idempotency-key/i);
         });
 
-        await handler(req, res);
+        it('should reject negative amounts', async () => {
+            const { req, res } = createMocks({
+                method: 'POST',
+                headers: { 'idempotency-key': 'key-1' },
+                body: { amount: '-50', category: 'Food', date: '2023-01-01' },
+            });
+            await handler(req, res);
+            expect(res._getStatusCode()).toBe(400);
+            expect(res._getJSONData().error).toMatch(/positive number/i);
+        });
 
-        expect(res._getStatusCode()).toBe(400);
-        expect(res._getJSONData().error).toMatch(/idempotency key/);
+        it('should reject missing category', async () => {
+            const { req, res } = createMocks({
+                method: 'POST',
+                headers: { 'idempotency-key': 'key-2' },
+                body: { amount: '50', category: '', date: '2023-01-01' },
+            });
+            await handler(req, res);
+            expect(res._getStatusCode()).toBe(400);
+            expect(res._getJSONData().error).toMatch(/category is required/i);
+        });
     });
 
-    it('POST should be idempotent (return existing logic)', async () => {
-        // Setup existing record found
-        mockSingle.mockResolvedValueOnce({ data: { id: 'existing-id' }, error: null });
+    describe('POST Creation', () => {
+        it('should create new expense with correct integer amount', async () => {
+            // 1. Check existing key -> null
+            mockSingle.mockResolvedValueOnce({ data: null, error: null });
 
-        const { req, res } = createMocks({
-            method: 'POST',
-            body: {
-                amount: '100',
-                category: 'Food',
-                date: '2023-01-01',
-                idempotencyKey: 'key-123',
-            },
+            // 2. Insert -> Select -> Single -> Return new data
+            mockSingle.mockResolvedValueOnce({
+                data: { id: 'new-id', amount_paise: 10550, category: 'Food', date: '2023-01-01' },
+                error: null
+            });
+
+            const { req, res } = createMocks({
+                method: 'POST',
+                headers: { 'idempotency-key': 'key-new' },
+                body: { amount: '105.50', category: 'Food', date: '2023-01-01' },
+            });
+
+            await handler(req, res);
+
+            expect(res._getStatusCode()).toBe(201);
+            expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
+                amount_paise: 10550 // 105.50 * 100
+            }));
         });
 
-        await handler(req, res);
+        it('should enforce idempotency', async () => {
+            // Existing key found
+            mockSingle.mockResolvedValueOnce({ data: { expense_id: 'existing-id' }, error: null });
 
-        expect(res._getStatusCode()).toBe(200);
-        expect(res._getJSONData().id).toBe('existing-id');
+            // Fetch existing expense
+            mockSingle.mockResolvedValueOnce({
+                data: { id: 'existing-id', amount_paise: 5000, category: 'Food' },
+                error: null
+            });
+
+            const { req, res } = createMocks({
+                method: 'POST',
+                headers: { 'idempotency-key': 'key-old' },
+                body: { amount: '50', category: 'Food', date: '2023-01-01' },
+            });
+
+            await handler(req, res);
+
+            expect(res._getStatusCode()).toBe(200);
+            expect(mockInsert).not.toHaveBeenCalled(); // No new insert
+            expect(res._getJSONData().id).toBe('existing-id');
+        });
     });
 
-    it('POST should create new expense if valid', async () => {
-        // 1. Check existing: Not found
-        mockSingle.mockResolvedValueOnce({ data: null, error: null });
+    describe('GET Fetching', () => {
+        it('should fetch all expenses by default', async () => {
+            mockOrder.mockResolvedValue({
+                data: [{ id: '1', amount_paise: 1000, category: 'Food' }],
+                error: null
+            });
 
-        // 2. Insert -> Select -> Single: Return new ID
-        mockSingle.mockResolvedValueOnce({ data: { id: 'new-id' }, error: null });
+            const { req, res } = createMocks({ method: 'GET' });
+            await handler(req, res);
 
-        const { req, res } = createMocks({
-            method: 'POST',
-            body: {
-                amount: '105.50',
-                category: 'Food',
-                date: '2023-01-01',
-                idempotencyKey: 'key-new',
-            },
+            expect(res._getStatusCode()).toBe(200);
+            expect(res._getJSONData()).toHaveLength(1);
+            expect(res._getJSONData()[0].amount).toBe('10.00'); // Formatted back
         });
 
-        await handler(req, res);
+        it('should filter by category', async () => {
+            const { req, res } = createMocks({
+                method: 'GET',
+                query: { category: 'Travel' }
+            });
 
-        expect(res._getStatusCode()).toBe(201);
-        expect(res._getJSONData().id).toBe('new-id');
-        expect(mockCreateClient).toHaveBeenCalled(); // verified
-        expect(mockFrom).toHaveBeenCalledWith('expenses');
-        expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
-            amount_paise: 10550
-        }));
+            await handler(req, res);
+
+            expect(mockEq).toHaveBeenCalledWith('category', 'Travel');
+        });
+
+        it('should sort by date_desc', async () => {
+            const { req, res } = createMocks({
+                method: 'GET',
+                query: { sort: 'date_desc' }
+            });
+
+            await handler(req, res);
+
+            expect(mockOrder).toHaveBeenCalledWith('date', { ascending: false });
+        });
     });
 });

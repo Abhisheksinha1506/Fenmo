@@ -13,84 +13,121 @@ const supabase = createClient(supabaseUrl!, supabaseKey!);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
-    const { amount, category, description, date, idempotencyKey } = req.body;
+    // 1. Extract idempotency key from header
+    const idempotencyKey = req.headers['idempotency-key'] as string;
+    const { amount, category, description, date } = req.body;
 
     // Validation
-    if (!idempotencyKey) return res.status(400).json({ error: 'Missing idempotency key' });
-    
+    if (!idempotencyKey) return res.status(400).json({ error: 'Missing Idempotency-Key header' });
+
     // Parse amount to paise (integers)
     const amountFloat = parseFloat(amount);
     if (isNaN(amountFloat) || amountFloat <= 0) {
-        return res.status(400).json({ error: 'Amount must be a positive number' });
+      return res.status(400).json({ error: 'Amount must be a positive number' });
     }
     const amountPaise = Math.round(amountFloat * 100);
 
     if (!category || typeof category !== 'string' || !category.trim()) {
-        return res.status(400).json({ error: 'Category is required' });
+      return res.status(400).json({ error: 'Category is required' });
     }
 
     if (!date || isNaN(new Date(date).getTime())) {
-        return res.status(400).json({ error: 'Valid date is required' });
+      return res.status(400).json({ error: 'Valid date is required' });
     }
-    
+
     if (description && description.length > 500) {
-        return res.status(400).json({ error: 'Description too long (max 500 characters)' });
+      return res.status(400).json({ error: 'Description too long (max 500 characters)' });
     }
 
     try {
-      // Idempotency Check
-      const { data: existing } = await supabase
-        .from('expenses')
-        .select('id')
-        .eq('idempotency_key', idempotencyKey)
+      // 2. Check if this key was already processed
+      const { data: existingKey } = await supabase
+        .from('idempotency_keys')
+        .select('expense_id')
+        .eq('key', idempotencyKey)
         .single();
-        
-      if (existing) {
-          return res.status(200).json({ id: existing.id, message: 'Expense already exists' });
+
+      if (existingKey) {
+        // Key exists - return the original expense
+        const { data: existingExpense, error: fetchError } = await supabase
+          .from('expenses')
+          .select('*')
+          .eq('id', existingKey.expense_id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        // Transform amount back to rupees string for consistency
+        const expenseFormatted = {
+          ...existingExpense,
+          amount: (existingExpense.amount_paise / 100).toFixed(2)
+        };
+
+        return res.status(200).json(expenseFormatted);
       }
 
-      // Insert new expense
-      const { data, error } = await supabase.from('expenses').insert({
+      // 3. New request - create expense
+      const { data: newExpense, error: insertError } = await supabase.from('expenses').insert({
         amount_paise: amountPaise,
         category: category.trim(),
         description: description ? description.trim() : null,
         date,
-        idempotency_key: idempotencyKey,
-      }).select('id').single();
+      }).select('id, amount_paise, category, description, date, created_at').single();
 
-      if (error) throw error;
-      return res.status(201).json(data);
+      if (insertError) throw insertError;
+
+      // 4. Save idempotency key
+      const { error: keyError } = await supabase
+        .from('idempotency_keys')
+        .insert({
+          key: idempotencyKey,
+          expense_id: newExpense.id
+        });
+
+      if (keyError) {
+        // In a real system, we might want to rollback the expense creation here
+        console.error('Failed to save idempotency key:', keyError);
+        // For now, we proceed as the expense was created
+      }
+
+      // Transform response
+      const responseData = {
+        ...newExpense,
+        amount: (newExpense.amount_paise / 100).toFixed(2)
+      };
+
+      return res.status(201).json(responseData);
     } catch (error: any) {
       console.error('Error creating expense:', error);
       return res.status(500).json({ error: error.message || 'Failed to create expense' });
     }
   } else if (req.method === 'GET') {
     const { category, sort } = req.query;
-    
+
     let query = supabase.from('expenses').select('*');
 
     if (category && typeof category === 'string' && category.trim()) {
-        query = query.eq('category', category.trim());
+      query = query.eq('category', category.trim());
     }
-    
+
     if (sort === 'date_desc') {
-        query = query.order('date', { ascending: false });
+      query = query.order('date', { ascending: false });
     } else {
-        // Default sort by created_at desc if not otherwise specified
-        query = query.order('created_at', { ascending: false }); 
+      // Default sort by created_at desc if not otherwise specified
+      query = query.order('created_at', { ascending: false });
     }
 
     const { data, error } = await query;
 
     if (error) {
-        console.error('Error fetching expenses:', error);
-        return res.status(500).json({ error: 'Failed to fetch expenses' });
+      console.error('Error fetching expenses:', error);
+      return res.status(500).json({ error: 'Failed to fetch expenses' });
     }
 
     // Transform amount back to rupees string
     const expenses = data.map((exp: any) => ({
-        ...exp,
-        amount: (exp.amount_paise / 100).toFixed(2)
+      ...exp,
+      amount: (exp.amount_paise / 100).toFixed(2)
     }));
 
     return res.status(200).json(expenses);

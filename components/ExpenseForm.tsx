@@ -77,7 +77,7 @@ export default function ExpenseForm({ onSubmit, isSubmitting, error }: ExpenseFo
                 </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Amount Field */}
                     <div className="space-y-2">

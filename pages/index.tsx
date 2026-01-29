@@ -84,11 +84,11 @@ export default function Home() {
             const idempotencyKey = uuidv4();
             const res = await fetch('/api/expenses', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...data,
-                    idempotencyKey,
-                }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Idempotency-Key': idempotencyKey
+                },
+                body: JSON.stringify(data),
             });
 
             if (!res.ok) {

@@ -4,38 +4,81 @@
 
 @layer base {
     :root {
-        --background: 224 71% 4%;
+        /* Premium Dark Theme (Default) */
+        --background: 220 40% 8%;
+        /* Very Dark Slate/Navy */
         --foreground: 0 0% 98%;
+        /* Almost White */
 
-        --card: 224 71% 6%;
+        --card: 220 30% 12%;
+        /* Lighter Dark Navy */
         --card-foreground: 0 0% 98%;
 
-        --popover: 224 71% 4%;
+        --popover: 220 40% 8%;
         --popover-foreground: 0 0% 98%;
 
-        --primary: 217 91% 60%;
-        --primary-foreground: 0 0% 98%;
+        --primary: 220 90% 60%;
+        /* Blue-Indigo Accent */
+        --primary-foreground: 0 0% 100%;
 
-        --secondary: 223 47% 11%;
-        --secondary-foreground: 210 40% 98%;
+        --secondary: 220 30% 12%;
+        /* Muted Navy */
+        --secondary-foreground: 0 0% 98%;
 
-        --muted: 223 47% 11%;
+        --muted: 220 30% 12%;
+        /* Muted Navy */
         --muted-foreground: 215 20% 65%;
 
-        --accent: 217 91% 60%;
-        --accent-foreground: 0 0% 98%;
+        --accent: 220 90% 60%;
+        --accent-foreground: 0 0% 100%;
 
         --destructive: 0 84% 60%;
-        --destructive-foreground: 0 0% 98%;
+        /* Red */
+        --destructive-foreground: 0 0% 100%;
 
-        --success: 142 76% 36%;
+        --success: 160 80% 45%;
+        /* Emerald */
         --success-foreground: 0 0% 100%;
 
-        --border: 223 47% 11%;
-        --input: 223 47% 11%;
-        --ring: 217 91% 60%;
+        --border: 220 30% 12%;
+        --input: 220 30% 12%;
+        --ring: 220 90% 60%;
 
         --radius: 0.5rem;
+    }
+
+    /* Force dark mode styles even if class is missing, but best practice is to adhere to class */
+    .dark {
+        --background: 220 40% 8%;
+        --foreground: 0 0% 98%;
+
+        --card: 220 30% 12%;
+        --card-foreground: 0 0% 98%;
+
+        --popover: 220 40% 8%;
+        --popover-foreground: 0 0% 98%;
+
+        --primary: 220 90% 60%;
+        --primary-foreground: 0 0% 100%;
+
+        --secondary: 220 30% 12%;
+        --secondary-foreground: 0 0% 98%;
+
+        --muted: 220 30% 12%;
+        --muted-foreground: 215 20% 65%;
+
+        --accent: 220 90% 60%;
+        --accent-foreground: 0 0% 100%;
+
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+
+        --success: 160 80% 45%;
+        --success-foreground: 0 0% 100%;
+
+        --border: 220 30% 12%;
+        --input: 220 30% 12%;
+        --ring: 220 90% 60%;
     }
 }
 
@@ -46,5 +89,22 @@
 
     body {
         @apply bg-background text-foreground;
+    }
+
+    /* Optional: Custom Scrollbar for premium feel */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        @apply bg-background;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        @apply bg-muted rounded-full;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        @apply bg-primary/50;
     }
 }
